@@ -172,11 +172,134 @@ class OpenAILLMAdapter(BaseLLMAdapter):
 
         return await MockLLMAdapter().generate_answer(query, evidence, system_instruction, temperature)
 
+class OllamaLLMAdapter(BaseLLMAdapter):
+    """Adapter for local Ollama instances (e.g., http://localhost:11434)."""
+    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2"):
+        self.base_url = base_url.rstrip("/")
+        self.model = model or "llama3.2"
+
+    async def generate_answer(
+        self,
+        query: str,
+        evidence: List[SearchResultItem],
+        system_instruction: str,
+        temperature: float = 0.1
+    ) -> str:
+        evidence_text = "\n".join([
+            f"Record #{e.ident} [{e.component_tag}]: Problem: '{e.problem}', Action: '{e.action}'"
+            for e in evidence
+        ])
+
+        prompt = (
+            f"{system_instruction}\n\n"
+            f"EVIDENCE RECORDS:\n{evidence_text}\n\n"
+            f"USER QUERY: {query}\n\n"
+            f"Provide an evidence-grounded response. Cite every record as [Rec #IDENT]."
+        )
+
+        try:
+            async with httpx.AsyncClient(timeout=40.0) as client:
+                res = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json={
+                        "model": self.model,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {"temperature": temperature}
+                    }
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    resp = data.get("response", "")
+                    if resp:
+                        return resp
+                logger.warning(f"Ollama returned status {res.status_code}: {res.text}")
+        except Exception as e:
+            logger.warning(f"Could not reach Ollama at {self.base_url}: {e}")
+
+        return await MockLLMAdapter().generate_answer(query, evidence, system_instruction, temperature)
+
+class LocalTransformersLLMAdapter(BaseLLMAdapter):
+    """
+    On-device Neural LLM adapter utilizing Hugging Face Transformers.
+    Runs locally on Apple Silicon MPS or CPU without any internet connection.
+    Falls back gracefully to MockLLMAdapter if the model weights cannot be loaded.
+    """
+    _pipeline = None
+
+    def __init__(self, model_name: str = "HuggingFaceTB/SmolLM2-360M-Instruct"):
+        self.model_name = model_name or "HuggingFaceTB/SmolLM2-360M-Instruct"
+
+    def _get_pipeline(self):
+        if LocalTransformersLLMAdapter._pipeline is None:
+            try:
+                import torch
+                from transformers import pipeline
+                device = "mps" if torch.backends.mps.is_available() else "cpu"
+                logger.info(f"Loading local neural model {self.model_name} on {device}...")
+                LocalTransformersLLMAdapter._pipeline = pipeline(
+                    "text-generation",
+                    model=self.model_name,
+                    device=device,
+                    torch_dtype=torch.float16 if device == "mps" else torch.float32,
+                )
+                logger.info(f"Successfully loaded {self.model_name} on {device}")
+            except Exception as e:
+                logger.warning(f"Failed to load local transformers model ({e}), falling back to deterministic synthesis")
+                LocalTransformersLLMAdapter._pipeline = None
+        return LocalTransformersLLMAdapter._pipeline
+
+    async def generate_answer(
+        self,
+        query: str,
+        evidence: List[SearchResultItem],
+        system_instruction: str,
+        temperature: float = 0.1
+    ) -> str:
+        pipe = self._get_pipeline()
+        if pipe is None:
+            return await MockLLMAdapter().generate_answer(query, evidence, system_instruction, temperature)
+
+        evidence_text = "\n".join([
+            f"- Record #{e.ident} [{e.component_tag}]: Fault: \"{e.problem}\" -> Action: \"{e.action}\""
+            for e in evidence
+        ])
+
+        prompt = (
+            f"<|im_start|>system\n"
+            f"{system_instruction}\n"
+            f"You are Maintenance Copilot. Base your answer strictly on the provided logbook entries.\n"
+            f"Cite every record using [Rec #IDENT].<|im_end|>\n"
+            f"<|im_start|>user\n"
+            f"EVIDENCE RECORDS:\n{evidence_text}\n\n"
+            f"QUESTION: {query}<|im_end|>\n"
+            f"<|im_start|>assistant\n"
+        )
+        try:
+            res = pipe(prompt, max_new_tokens=256, temperature=max(0.1, temperature), do_sample=(temperature > 0.1))
+            full_text = res[0]["generated_text"]
+            if "<|im_start|>assistant\n" in full_text:
+                ans = full_text.split("<|im_start|>assistant\n")[-1].strip()
+                ans = ans.replace("<|im_end|>", "").strip()
+                if "[Rec #" not in ans and evidence:
+                    cites = " ".join([f"[Rec #{e.ident}]" for e in evidence[:3]])
+                    ans += f"\n\nHistorical Reference Records: {cites}"
+                return ans
+            return full_text[len(prompt):].strip()
+        except Exception as e:
+            logger.error(f"Error generating with local transformers model: {e}")
+            return await MockLLMAdapter().generate_answer(query, evidence, system_instruction, temperature)
+
 def get_llm_adapter() -> BaseLLMAdapter:
     provider = settings.LLM_PROVIDER.lower().strip()
     if provider == "gemini" and settings.GEMINI_API_KEY:
         return GeminiLLMAdapter(settings.GEMINI_API_KEY)
     elif provider == "openai" and settings.OPENAI_API_KEY:
         return OpenAILLMAdapter(settings.OPENAI_API_KEY, settings.OPENAI_BASE_URL, settings.LLM_MODEL_NAME)
+    elif provider == "ollama":
+        return OllamaLLMAdapter(settings.OLLAMA_BASE_URL, settings.LLM_MODEL_NAME)
+    elif provider in ["local", "transformers"]:
+        return LocalTransformersLLMAdapter(settings.LLM_MODEL_NAME or "HuggingFaceTB/SmolLM2-360M-Instruct")
     else:
         return MockLLMAdapter()
+
