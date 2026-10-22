@@ -11,17 +11,28 @@ import {
   Compass,
   ArrowUpRight,
   ShieldCheck,
-  Cpu
+  Cpu,
+  GitCompare,
+  Bell,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AnalyticsOverview } from '../types';
+import { KPICard } from './common/KPICard';
 
 interface DashboardProps {
   onNavigateToRecords: (componentFilter?: string) => void;
   onSelectRecord: (ident: string) => void;
+  onNavigateToCompare?: () => void;
+  onNavigateToAlerts?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRecords, onSelectRecord }) => {
+export const Dashboard: React.FC<DashboardProps> = ({
+  onNavigateToRecords,
+  onSelectRecord,
+  onNavigateToCompare,
+  onNavigateToAlerts
+}) => {
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,76 +117,93 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigateToRecords, onSel
         </div>
       </div>
 
-      {/* 4 Glowing Metric Cards */}
+      {/* 4 KPICards (Reference from Stablecoin Project) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Records */}
-        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-all"></div>
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span className="font-medium">Total Ingested Logbooks</span>
-            <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-              <Database className="w-4 h-4" />
+        <KPICard
+          title="Total Ingested Logs"
+          value={data.total_records.toLocaleString()}
+          subtitle="100% verified logbook dataset"
+          change="100%"
+          trend="up"
+          icon={<Database className="w-5 h-5 text-sky-400" />}
+          onClick={() => onNavigateToRecords()}
+        />
+
+        <KPICard
+          title="Indexed Dense Vectors"
+          value={data.ingestion_summary.vector_count.toLocaleString()}
+          subtitle="384-dimensional dense index"
+          badge="all-MiniLM-L6-v2"
+          trend="up"
+          icon={<Layers className="w-5 h-5 text-indigo-400" />}
+        />
+
+        <KPICard
+          title="Subsystem Categories"
+          value={data.unique_components}
+          subtitle="Cylinders, Baffles, Valvetrain, Magnetos"
+          trend="neutral"
+          icon={<Compass className="w-5 h-5 text-amber-400" />}
+          onClick={onNavigateToCompare}
+        />
+
+        <KPICard
+          title="Action Classifications"
+          value={data.unique_actions}
+          subtitle="R&R, Stop-drilled, Reamed, Torqued"
+          trend="neutral"
+          icon={<Wrench className="w-5 h-5 text-emerald-400" />}
+        />
+      </div>
+
+      {/* Feature Navigation Highlights (Compare & Alerts) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Subsystem Compare Callout */}
+        <div
+          onClick={onNavigateToCompare}
+          className="p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 to-sky-950/20 border border-slate-800/80 hover:border-sky-500/50 cursor-pointer transition-all shadow-xl group flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 group-hover:scale-105 transition-transform">
+              <GitCompare className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white group-hover:text-sky-300 transition-colors flex items-center space-x-2">
+                <span>Subsystem Comparative Matrix</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-950 text-sky-400 border border-sky-800">
+                  NEW
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Compare failure rates and remedy distributions across cylinders, baffles, and valvetrain
+              </p>
             </div>
           </div>
-          <div className="text-3xl font-extrabold font-mono text-white tracking-tight">
-            {data.total_records.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-slate-400 flex items-center space-x-1 mt-2">
-            <span className="text-emerald-400 font-medium">100% Validated</span>
-            <span>from MaintNet dataset</span>
-          </div>
+          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-1 transition-all" />
         </div>
 
-        {/* Vector Embeddings */}
-        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-all"></div>
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span className="font-medium">Indexed Dense Vectors</span>
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Layers className="w-4 h-4" />
+        {/* Safety Alerts Callout */}
+        <div
+          onClick={onNavigateToAlerts}
+          className="p-5 rounded-2xl bg-gradient-to-br from-slate-900/90 to-red-950/20 border border-slate-800/80 hover:border-red-500/50 cursor-pointer transition-all shadow-xl group flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white group-hover:text-red-300 transition-colors flex items-center space-x-2">
+                <span>Safety Discrepancies & Alerts Feed</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-950 text-red-400 border border-red-800">
+                  53 CRITICAL
+                </span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Real-time monitoring of in-flight shutdowns, structural cracks, and zero compression faults
+              </p>
             </div>
           </div>
-          <div className="text-3xl font-extrabold font-mono text-indigo-300 tracking-tight">
-            {data.ingestion_summary.vector_count.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-2 flex items-center space-x-1">
-            <Cpu className="w-3 h-3 text-indigo-400" />
-            <span>Model: <strong className="font-mono text-slate-300">all-MiniLM-L6-v2</strong></span>
-          </div>
-        </div>
-
-        {/* Monitored Subsystems */}
-        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all"></div>
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span className="font-medium">Subsystem Categories</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <Compass className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-extrabold font-mono text-amber-300 tracking-tight">
-            {data.unique_components}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-2">
-            Intake, Baffle, Cylinders, Valvetrain
-          </div>
-        </div>
-
-        {/* Action Types */}
-        <div className="glass-card p-5 rounded-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all"></div>
-          <div className="flex items-center justify-between text-slate-400 text-xs mb-2">
-            <span className="font-medium">Action Classifications</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <Wrench className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-extrabold font-mono text-emerald-300 tracking-tight">
-            {data.unique_actions}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-2">
-            R&R, Stop-drilled, Reamed, Torqued
-          </div>
+          <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
         </div>
       </div>
 

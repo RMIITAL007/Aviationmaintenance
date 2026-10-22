@@ -26,6 +26,8 @@ interface CopilotChatProps {
   onSelectRecord: (ident: string) => void;
   onOpenModelSettings?: () => void;
   activeModelProvider?: string;
+  initialPrompt?: string | null;
+  onClearInitialPrompt?: () => void;
 }
 
 const CATEGORIZED_PROMPTS = [
@@ -58,7 +60,9 @@ const CATEGORIZED_PROMPTS = [
 export const CopilotChat: React.FC<CopilotChatProps> = ({
   onSelectRecord,
   onOpenModelSettings,
-  activeModelProvider = 'local'
+  activeModelProvider = 'local',
+  initialPrompt,
+  onClearInitialPrompt
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState('');
@@ -74,6 +78,13 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({
     const newId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setSessionId(newId);
   }, []);
+
+  useEffect(() => {
+    if (initialPrompt && !loading) {
+      handleSendMessage(initialPrompt);
+      onClearInitialPrompt?.();
+    }
+  }, [initialPrompt]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

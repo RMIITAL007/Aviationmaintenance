@@ -93,3 +93,29 @@ async def test_model_settings():
         assert updated["provider"] == "local"
         assert updated["temperature"] == 0.15
 
+@pytest.mark.asyncio
+async def test_safety_alerts_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.get("/api/analytics/alerts")
+        assert res.status_code == 200
+        data = res.json()
+        assert "total_alerts" in data
+        assert data["total_alerts"] > 0
+        assert data["critical_count"] > 0
+        assert len(data["alerts"]) > 0
+        assert data["alerts"][0]["severity"] in ["CRITICAL", "HIGH", "ELEVATED", "ADVISORY"]
+
+@pytest.mark.asyncio
+async def test_subsystem_compare_endpoint():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.get("/api/analytics/compare?components=CYLINDER,BAFFLE,MAGNETO")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data["comparisons"]) == 3
+        comp_names = [c["component"] for c in data["comparisons"]]
+        assert "CYLINDER" in comp_names
+        assert data["comparisons"][0]["total_records"] > 0
+
+

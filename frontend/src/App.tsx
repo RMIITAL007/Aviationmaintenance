@@ -7,6 +7,8 @@ import { RecordsExplorer } from './components/RecordsExplorer';
 import { DataIngestion } from './components/DataIngestion';
 import { EvaluationView } from './components/EvaluationView';
 import { ModelSettingsModal } from './components/ModelSettingsModal';
+import { SubsystemCompare } from './components/SubsystemCompare';
+import { FleetAlertsView } from './components/FleetAlertsView';
 import { api } from './services/api';
 import { ModelSettings } from './types';
 
@@ -17,6 +19,7 @@ export const App: React.FC = () => {
   const [focusedIdent, setFocusedIdent] = useState<string | null>(null);
   const [isModelSettingsOpen, setIsModelSettingsOpen] = useState<boolean>(false);
   const [modelSettings, setModelSettings] = useState<ModelSettings | null>(null);
+  const [copilotPrompt, setCopilotPrompt] = useState<string | null>(null);
 
   const checkHealthAndStats = async () => {
     try {
@@ -54,6 +57,7 @@ export const App: React.FC = () => {
   };
 
   const handleAskCopilot = (query: string) => {
+    setCopilotPrompt(query);
     setActiveTab('copilot');
   };
 
@@ -93,6 +97,22 @@ export const App: React.FC = () => {
               onSelectRecord={handleSelectRecord}
               onOpenModelSettings={() => setIsModelSettingsOpen(true)}
               activeModelProvider={modelSettings?.provider || 'local'}
+              initialPrompt={copilotPrompt}
+              onClearInitialPrompt={() => setCopilotPrompt(null)}
+            />
+          )}
+
+          {activeTab === 'compare' && (
+            <SubsystemCompare
+              onAskCopilot={handleAskCopilot}
+              onSelectRecord={handleSelectRecord}
+            />
+          )}
+
+          {activeTab === 'alerts' && (
+            <FleetAlertsView
+              onAskCopilot={handleAskCopilot}
+              onSelectRecord={handleSelectRecord}
             />
           )}
 

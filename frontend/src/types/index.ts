@@ -164,3 +164,39 @@ export interface ModelSettings {
   base_url?: string | null;
 }
 
+export interface SafetyAlertItem {
+  id: string;
+  ident: string;
+  title: string;
+  severity: 'CRITICAL' | 'HIGH' | 'ELEVATED' | 'ADVISORY';
+  component: string;
+  problem: string;
+  action: string;
+  trigger_condition: string;
+  timestamp: string;
+}
+
+export interface AlertsResponse {
+  total_alerts: number;
+  critical_count: number;
+  high_count: number;
+  elevated_count: number;
+  advisory_count: number;
+  alerts: SafetyAlertItem[];
+}
+
+export interface SubsystemComparisonItem {
+  component: string;
+  total_records: number;
+  share_percentage: number;
+  top_action: string;
+  action_breakdown: ActionTypeMetric[];
+  sample_records: any[];
+}
+
+export interface SubsystemComparisonResponse {
+  selected_components: string[];
+  comparisons: SubsystemComparisonItem[];
+}
+
+

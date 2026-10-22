@@ -9,7 +9,9 @@ import {
   AnalyticsOverview,
   IngestionStatus,
   EvaluationReport,
-  ModelSettings
+  ModelSettings,
+  AlertsResponse,
+  SubsystemComparisonResponse
 } from '../types';
 
 const apiClient = axios.create({
@@ -149,6 +151,19 @@ export const api = {
     temperature?: number;
   }): Promise<ModelSettings> => {
     const res = await apiClient.post<ModelSettings>('/settings/model', payload);
+    return res.data;
+  },
+
+  // Alerts & Comparison (Stablecoin Reference)
+  getSafetyAlerts: async (): Promise<AlertsResponse> => {
+    const res = await apiClient.get<AlertsResponse>('/analytics/alerts');
+    return res.data;
+  },
+
+  compareSubsystems: async (components: string[]): Promise<SubsystemComparisonResponse> => {
+    const res = await apiClient.get<SubsystemComparisonResponse>('/analytics/compare', {
+      params: { components: components.join(',') }
+    });
     return res.data;
   }
 };

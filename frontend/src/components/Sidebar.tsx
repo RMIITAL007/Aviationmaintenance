@@ -6,10 +6,12 @@ import {
   UploadCloud,
   CheckCircle2,
   BookOpen,
-  ChevronRight
+  ChevronRight,
+  GitCompare,
+  Bell
 } from 'lucide-react';
 
-export type ActiveTab = 'dashboard' | 'copilot' | 'records' | 'ingestion' | 'evaluation';
+export type ActiveTab = 'dashboard' | 'copilot' | 'compare' | 'alerts' | 'records' | 'ingestion' | 'evaluation';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -34,6 +36,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, record
       badgeColor: 'text-sky-400 bg-sky-950/60 border-sky-800/80',
       icon: BotMessageSquare,
       desc: 'Grounded inquiry with citations'
+    },
+    {
+      id: 'compare' as ActiveTab,
+      label: 'Subsystem Compare',
+      badge: 'Matrix',
+      badgeColor: 'text-cyan-400 bg-cyan-950/60 border-cyan-800/80',
+      icon: GitCompare,
+      desc: 'Cross-component failure matrix'
+    },
+    {
+      id: 'alerts' as ActiveTab,
+      label: 'Safety Alerts',
+      badge: '53 Crit',
+      badgeColor: 'text-red-400 bg-red-950/60 border-red-800/80',
+      icon: Bell,
+      desc: 'Real-time safety discrepancies'
     },
     {
       id: 'records' as ActiveTab,

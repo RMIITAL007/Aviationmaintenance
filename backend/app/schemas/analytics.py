@@ -28,3 +28,35 @@ class AnalyticsOverviewResponse(BaseModel):
     recent_records: List[dict] = Field(default_factory=list)
     ingestion_summary: IngestionStatusResponse
     disclaimer: str
+
+class SafetyAlertItem(BaseModel):
+    id: str
+    ident: str
+    title: str
+    severity: str  # "CRITICAL", "HIGH", "ELEVATED", "ADVISORY"
+    component: str
+    problem: str
+    action: str
+    trigger_condition: str
+    timestamp: str
+
+class AlertsResponse(BaseModel):
+    total_alerts: int
+    critical_count: int
+    high_count: int
+    elevated_count: int
+    advisory_count: int
+    alerts: List[SafetyAlertItem]
+
+class SubsystemComparisonItem(BaseModel):
+    component: str
+    total_records: int
+    share_percentage: float
+    top_action: str
+    action_breakdown: List[ActionTypeMetric]
+    sample_records: List[dict] = Field(default_factory=list)
+
+class SubsystemComparisonResponse(BaseModel):
+    selected_components: List[str]
+    comparisons: List[SubsystemComparisonItem]
+
