@@ -16,13 +16,16 @@ import {
   ArrowRight,
   ExternalLink,
   ShieldAlert,
-  AlertCircle
+  AlertCircle,
+  Cpu
 } from 'lucide-react';
 import { api } from '../services/api';
 import { ChatMessage, CitationItem, AgentStepItem } from '../types';
 
 interface CopilotChatProps {
   onSelectRecord: (ident: string) => void;
+  onOpenModelSettings?: () => void;
+  activeModelProvider?: string;
 }
 
 const CATEGORIZED_PROMPTS = [
@@ -52,7 +55,11 @@ const CATEGORIZED_PROMPTS = [
   }
 ];
 
-export const CopilotChat: React.FC<CopilotChatProps> = ({ onSelectRecord }) => {
+export const CopilotChat: React.FC<CopilotChatProps> = ({
+  onSelectRecord,
+  onOpenModelSettings,
+  activeModelProvider = 'local'
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState('');
   const [sessionId, setSessionId] = useState<string>('');
@@ -185,6 +192,16 @@ export const CopilotChat: React.FC<CopilotChatProps> = ({ onSelectRecord }) => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {onOpenModelSettings && (
+              <button
+                onClick={onOpenModelSettings}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-sky-950/60 hover:bg-sky-900/70 border border-sky-800/80 text-xs text-sky-300 transition-colors shadow-sm"
+                title="Switch AI inference model"
+              >
+                <Cpu className="w-3.5 h-3.5 text-sky-400" />
+                <span className="font-mono text-[11px] uppercase">{activeModelProvider}</span>
+              </button>
+            )}
             <button
               onClick={handleResetChat}
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 border border-slate-700 transition-colors shadow-sm"

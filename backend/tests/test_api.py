@@ -70,3 +70,26 @@ async def test_analytics_overview():
         data = res.json()
         assert data["total_records"] >= 6000
         assert len(data["top_components"]) > 0
+
+@pytest.mark.asyncio
+async def test_model_settings():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        # Get settings
+        res = await ac.get("/api/settings/model")
+        assert res.status_code == 200
+        data = res.json()
+        assert "provider" in data
+        assert "model_name" in data
+
+        # Update settings to local
+        update_res = await ac.post("/api/settings/model", json={
+            "provider": "local",
+            "model_name": "HuggingFaceTB/SmolLM2-360M-Instruct",
+            "temperature": 0.15
+        })
+        assert update_res.status_code == 200
+        updated = update_res.json()
+        assert updated["provider"] == "local"
+        assert updated["temperature"] == 0.15
+

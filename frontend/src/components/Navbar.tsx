@@ -7,19 +7,24 @@ import {
   Github,
   Clock,
   Sparkles,
-  Search
+  Search,
+  Cpu
 } from 'lucide-react';
 
 interface NavbarProps {
   totalRecords: number;
   isBackendHealthy: boolean;
   onOpenQuickSearch?: () => void;
+  onOpenModelSettings?: () => void;
+  activeModelProvider?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   totalRecords,
   isBackendHealthy,
-  onOpenQuickSearch
+  onOpenQuickSearch,
+  onOpenModelSettings,
+  activeModelProvider = 'local'
 }) => {
   const [zuluTime, setZuluTime] = useState('');
 
@@ -111,6 +116,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isBackendHealthy ? 'API ONLINE' : 'API OFFLINE'}
           </span>
         </div>
+
+        {/* AI Engine & Model Settings Trigger */}
+        {onOpenModelSettings && (
+          <button
+            onClick={onOpenModelSettings}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-800/60 hover:border-sky-700 text-xs text-sky-300 transition-all shadow-sm group"
+            title="Configure AI Inference Engine (Local Neural, Gemini, OpenAI, Ollama)"
+          >
+            <Cpu className="w-3.5 h-3.5 text-sky-400 group-hover:rotate-12 transition-transform" />
+            <span className="font-mono text-[11px] uppercase tracking-wide">
+              {activeModelProvider}
+            </span>
+          </button>
+        )}
 
         {/* GitHub Repo Link */}
         <a

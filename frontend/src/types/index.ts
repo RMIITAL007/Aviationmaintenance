@@ -153,3 +153,14 @@ export interface EvaluationReport {
   evaluated_model: string;
   embedding_model: string;
 }
+
+export interface ModelSettings {
+  provider: 'local' | 'gemini' | 'openai' | 'ollama' | 'mock';
+  model_name: string;
+  has_gemini_key: boolean;
+  has_openai_key: boolean;
+  masked_key?: string | null;
+  temperature: number;
+  base_url?: string | null;
+}
+

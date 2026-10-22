@@ -8,7 +8,8 @@ import {
   ChatMessage,
   AnalyticsOverview,
   IngestionStatus,
-  EvaluationReport
+  EvaluationReport,
+  ModelSettings
 } from '../types';
 
 const apiClient = axios.create({
@@ -132,5 +133,23 @@ export const api = {
   getLatestEvaluation: async (): Promise<EvaluationReport> => {
     const res = await apiClient.get<EvaluationReport>('/evaluation/latest');
     return res.data;
+  },
+
+  // Settings
+  getModelSettings: async (): Promise<ModelSettings> => {
+    const res = await apiClient.get<ModelSettings>('/settings/model');
+    return res.data;
+  },
+
+  updateModelSettings: async (payload: {
+    provider: string;
+    model_name?: string;
+    api_key?: string;
+    base_url?: string;
+    temperature?: number;
+  }): Promise<ModelSettings> => {
+    const res = await apiClient.post<ModelSettings>('/settings/model', payload);
+    return res.data;
   }
 };
+

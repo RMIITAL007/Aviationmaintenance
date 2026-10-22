@@ -6,13 +6,17 @@ import { CopilotChat } from './components/CopilotChat';
 import { RecordsExplorer } from './components/RecordsExplorer';
 import { DataIngestion } from './components/DataIngestion';
 import { EvaluationView } from './components/EvaluationView';
+import { ModelSettingsModal } from './components/ModelSettingsModal';
 import { api } from './services/api';
+import { ModelSettings } from './types';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean>(false);
   const [focusedIdent, setFocusedIdent] = useState<string | null>(null);
+  const [isModelSettingsOpen, setIsModelSettingsOpen] = useState<boolean>(false);
+  const [modelSettings, setModelSettings] = useState<ModelSettings | null>(null);
 
   const checkHealthAndStats = async () => {
     try {
@@ -24,8 +28,18 @@ export const App: React.FC = () => {
     }
   };
 
+  const loadModelSettings = async () => {
+    try {
+      const settings = await api.getModelSettings();
+      setModelSettings(settings);
+    } catch (e) {
+      console.warn("Failed to load model settings:", e);
+    }
+  };
+
   useEffect(() => {
     checkHealthAndStats();
+    loadModelSettings();
     const interval = setInterval(checkHealthAndStats, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -50,6 +64,8 @@ export const App: React.FC = () => {
         totalRecords={totalRecords}
         isBackendHealthy={isBackendHealthy}
         onOpenQuickSearch={() => setActiveTab('records')}
+        onOpenModelSettings={() => setIsModelSettingsOpen(true)}
+        activeModelProvider={modelSettings?.provider || 'local'}
       />
 
       {/* Main Body */}
@@ -73,7 +89,11 @@ export const App: React.FC = () => {
           )}
 
           {activeTab === 'copilot' && (
-            <CopilotChat onSelectRecord={handleSelectRecord} />
+            <CopilotChat
+              onSelectRecord={handleSelectRecord}
+              onOpenModelSettings={() => setIsModelSettingsOpen(true)}
+              activeModelProvider={modelSettings?.provider || 'local'}
+            />
           )}
 
           {activeTab === 'records' && (
@@ -89,6 +109,14 @@ export const App: React.FC = () => {
           {activeTab === 'evaluation' && <EvaluationView />}
         </main>
       </div>
+
+      {/* AI Model Configuration Modal */}
+      <ModelSettingsModal
+        isOpen={isModelSettingsOpen}
+        onClose={() => setIsModelSettingsOpen(false)}
+        currentSettings={modelSettings}
+        onSettingsUpdated={(newSettings) => setModelSettings(newSettings)}
+      />
     </div>
   );
 };
