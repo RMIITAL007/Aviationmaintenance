@@ -9,7 +9,11 @@ import {
   FileText,
   X,
   Check,
-  Tag
+  Tag,
+  Sparkles,
+  BotMessageSquare,
+  Compass,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../services/api';
 import { MaintenanceRecord, RecordListResponse } from '../types';
@@ -17,11 +21,22 @@ import { MaintenanceRecord, RecordListResponse } from '../types';
 interface RecordsExplorerProps {
   initialIdent?: string | null;
   onClearInitialIdent?: () => void;
+  onAskCopilot?: (query: string) => void;
 }
+
+const QUICK_TOPICS = [
+  { label: "Intake Gasket Leaks", query: "intake gasket leaking" },
+  { label: "Cracked Baffles", query: "baffle cracked" },
+  { label: "Loose Rocker Covers", query: "rocker box cover loose" },
+  { label: "Low Compression", query: "low compression" },
+  { label: "Stuck Exhaust Valves", query: "stuck exhaust valve" },
+  { label: "Engine Idle Shutdown", query: "engine idle override" }
+];
 
 export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
   initialIdent,
-  onClearInitialIdent
+  onClearInitialIdent,
+  onAskCopilot
 }) => {
   const [records, setRecords] = useState<MaintenanceRecord[]>([]);
   const [total, setTotal] = useState(0);
@@ -39,7 +54,6 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
   const [selectedRecord, setSelectedRecord] = useState<MaintenanceRecord | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Fetch filter options
   useEffect(() => {
     const fetchOptions = async () => {
       try {
@@ -56,12 +70,10 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
     fetchOptions();
   }, []);
 
-  // Handle direct lookup from other tabs (e.g. clicking citation in chat)
   useEffect(() => {
     if (initialIdent) {
       setSearchQuery(initialIdent);
       setPage(1);
-      // Fetch single record to open modal immediately
       api.getRecordDetail(initialIdent)
         .then((rec) => setSelectedRecord(rec))
         .catch(() => {});
@@ -99,6 +111,11 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
     fetchRecords();
   };
 
+  const handleSelectTopic = (query: string) => {
+    setSearchQuery(query);
+    setPage(1);
+  };
+
   const handleCopyJson = () => {
     if (!selectedRecord) return;
     navigator.clipboard.writeText(JSON.stringify(selectedRecord, null, 2));
@@ -106,26 +123,72 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getActionBadgeColor = (actionType?: string) => {
+    if (!actionType) return 'bg-slate-800 text-slate-300 border-slate-700';
+    const a = actionType.toUpperCase();
+    if (a.includes('REPLACE')) return 'bg-emerald-950/80 text-emerald-400 border-emerald-800/80';
+    if (a.includes('STOP')) return 'bg-amber-950/80 text-amber-400 border-amber-800/80';
+    if (a.includes('REAM')) return 'bg-purple-950/80 text-purple-400 border-purple-800/80';
+    if (a.includes('TIGHTEN') || a.includes('TORQUE')) return 'bg-sky-950/80 text-sky-400 border-sky-800/80';
+    return 'bg-slate-800 text-slate-300 border-slate-700';
+  };
+
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-800/60">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center space-x-2">
-            <span>Maintenance Records Explorer</span>
-          </h1>
+          <div className="flex items-center space-x-2.5">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white font-sans">
+              Maintenance Logbook Explorer
+            </h1>
+            <span className="px-2 py-0.5 rounded-full bg-sky-950 text-sky-400 border border-sky-800/80 text-[10px] font-mono font-bold">
+              6,169 ROWS
+            </span>
+          </div>
           <p className="text-xs text-slate-400 mt-1">
-            Browse, filter, and inspect {total.toLocaleString()} authentic aircraft logbook records.
+            Search, filter, and inspect authentic verbatim records alongside normalized technical representations.
           </p>
         </div>
 
-        <div className="text-xs text-slate-400 font-mono">
-          Showing {records.length} of {total.toLocaleString()} entries
+        <div className="text-xs text-slate-400 font-mono bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+          Showing {records.length} of <strong className="text-white">{total.toLocaleString()}</strong> entries
         </div>
       </div>
 
+      {/* Quick Topic Chips */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-mono uppercase text-slate-400 font-bold mr-1">
+          Quick Filters:
+        </span>
+        {QUICK_TOPICS.map((topic) => (
+          <button
+            key={topic.label}
+            onClick={() => handleSelectTopic(topic.query)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+              searchQuery === topic.query
+                ? 'bg-sky-500/20 text-sky-300 border-sky-500/50 shadow-sm'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border-slate-800'
+            }`}
+          >
+            {topic.label}
+          </button>
+        ))}
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setPage(1);
+            }}
+            className="text-[11px] text-red-400 hover:text-red-300 ml-2 underline"
+          >
+            Clear Filter
+          </button>
+        )}
+      </div>
+
       {/* Filter and Search Bar */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+      <div className="glass-panel p-4 rounded-2xl space-y-3 shadow-lg">
         <form onSubmit={handleSearchSubmit} className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
@@ -134,7 +197,7 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by Record ID (e.g. 100004), defect terms, or action text..."
-              className="w-full bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-lg pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none"
+              className="w-full bg-slate-950 border border-slate-700/80 focus:border-sky-500 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors shadow-inner"
             />
           </div>
 
@@ -147,7 +210,7 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
                 setSelectedComponent(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 shadow-inner"
             >
               <option value="ALL">All Subsystems</option>
               {componentsList.map((comp) => (
@@ -165,7 +228,7 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
               setSelectedActionType(e.target.value);
               setPage(1);
             }}
-            className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 shadow-inner"
           >
             <option value="ALL">All Action Types</option>
             {actionTypesList.map((act) => (
@@ -177,7 +240,7 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
 
           <button
             type="submit"
-            className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition-colors"
+            className="px-5 py-2.5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-sky-900/30"
           >
             Search
           </button>
@@ -185,31 +248,35 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
       </div>
 
       {/* Table Container */}
-      <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden shadow-sm">
+      <div className="glass-panel rounded-2xl overflow-hidden shadow-xl border border-slate-800">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] font-semibold border-b border-slate-800">
+            <thead className="bg-slate-950/90 text-slate-400 uppercase text-[10px] font-bold tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4 w-28">Record ID</th>
+                <th className="py-3 px-4 w-28">IDENT</th>
                 <th className="py-3 px-4 w-44">Subsystem</th>
-                <th className="py-3 px-4">Reported Defect (Problem)</th>
-                <th className="py-3 px-4">Maintenance Action Taken</th>
+                <th className="py-3 px-4">Reported Defect</th>
+                <th className="py-3 px-4">Maintenance Action</th>
                 <th className="py-3 px-4 w-36">Action Type</th>
-                <th className="py-3 px-4 w-16 text-center">Inspect</th>
+                <th className="py-3 px-4 w-24 text-center">Inspect</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
+            <tbody className="divide-y divide-slate-800/50 font-mono text-slate-300">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 font-sans">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-sky-400 mb-2" />
-                    <span>Loading maintenance records...</span>
+                  <td colSpan={6} className="py-16 text-center text-slate-400 font-sans">
+                    <RefreshCw className="w-8 h-8 animate-spin mx-auto text-sky-400 mb-2" />
+                    <span className="text-sm font-medium">Scanning maintenance records...</span>
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400 font-sans">
-                    No logbook records found matching the query and filters.
+                  <td colSpan={6} className="py-16 text-center text-slate-400 font-sans space-y-2">
+                    <Compass className="w-8 h-8 mx-auto text-slate-600 mb-2" />
+                    <div className="text-sm font-bold text-slate-300">No matching logbook records found</div>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Try adjusting search terms or clearing subsystem filters.
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -217,28 +284,29 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
                   <tr
                     key={r.ident}
                     onClick={() => setSelectedRecord(r)}
-                    className="hover:bg-slate-800/50 cursor-pointer transition-colors group"
+                    className="hover:bg-slate-800/40 cursor-pointer transition-colors group"
                   >
-                    <td className="py-3 px-4 font-bold text-sky-400">{r.ident}</td>
+                    <td className="py-3 px-4 font-extrabold text-sky-400 group-hover:underline">#{r.ident}</td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-sans inline-block">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800/80 text-slate-300 border border-slate-700/80 font-sans inline-block">
                         {r.component_tag || 'GENERAL'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-sans text-slate-200 max-w-md truncate" title={r.problem}>
+                    <td className="py-3 px-4 font-sans text-slate-200 max-w-xs truncate" title={r.problem}>
                       {r.problem}
                     </td>
-                    <td className="py-3 px-4 font-sans text-slate-300 max-w-md truncate" title={r.action}>
+                    <td className="py-3 px-4 font-sans text-slate-300 max-w-sm truncate" title={r.action}>
                       {r.action}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-[10px] text-emerald-400 font-sans">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-medium border ${getActionBadgeColor(r.action_type)}`}>
                         {r.action_type || 'MAINTENANCE'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button className="text-slate-500 group-hover:text-sky-400 transition-colors">
-                        <Eye className="w-4 h-4" />
+                      <button className="px-2 py-1 rounded bg-slate-800/80 group-hover:bg-sky-500/20 text-slate-400 group-hover:text-sky-300 transition-all border border-slate-700 group-hover:border-sky-500/40 text-[11px] font-sans flex items-center space-x-1 mx-auto">
+                        <Eye className="w-3 h-3" />
+                        <span>View</span>
                       </button>
                     </td>
                   </tr>
@@ -249,7 +317,7 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
         </div>
 
         {/* Pagination Footer */}
-        <div className="px-4 py-3 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="px-4 py-3 bg-slate-950/90 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-sans">
           <div className="flex items-center space-x-2">
             <span>Rows per page:</span>
             <select
@@ -265,23 +333,23 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
               <option value={100}>100</option>
             </select>
             <span>
-              Page <strong className="text-slate-200">{page}</strong> of{' '}
-              <strong className="text-slate-200">{totalPages}</strong>
+              Page <strong className="text-white font-mono">{page}</strong> of{' '}
+              <strong className="text-white font-mono">{totalPages}</strong>
             </span>
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1.5">
             <button
               onClick={() => setPage((p) => Math.max(p - 1, 1))}
               disabled={page <= 1}
-              className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
               disabled={page >= totalPages}
-              className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-800 transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -291,13 +359,13 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
 
       {/* Record Detail Modal */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-2xl bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
               <div className="flex items-center space-x-2.5">
                 <FileText className="w-5 h-5 text-sky-400" />
-                <h3 className="text-sm font-bold text-white font-mono">
-                  Record Detail: #{selectedRecord.ident}
+                <h3 className="text-sm font-extrabold text-white font-mono">
+                  LOGBOOK RECORD DETAIL: #{selectedRecord.ident}
                 </h3>
               </div>
               <button
@@ -308,41 +376,41 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-5 text-xs">
-              {/* Metadata Badges */}
+            <div className="p-6 overflow-y-auto space-y-5 text-xs font-sans">
+              {/* Badges */}
               <div className="flex flex-wrap gap-2">
-                <span className="px-2.5 py-1 rounded-md bg-sky-500/10 border border-sky-500/30 text-sky-300 font-semibold font-mono">
+                <span className="px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-500/40 text-sky-300 font-extrabold font-mono">
                   IDENT #{selectedRecord.ident}
                 </span>
-                <span className="px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-slate-200">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200">
                   Subsystem: {selectedRecord.component_tag || 'GENERAL'}
                 </span>
-                <span className="px-2.5 py-1 rounded-md bg-emerald-950 border border-emerald-800 text-emerald-300">
+                <span className={`px-2.5 py-1 rounded-lg border ${getActionBadgeColor(selectedRecord.action_type)}`}>
                   Action: {selectedRecord.action_type || 'MAINTENANCE'}
                 </span>
                 {selectedRecord.performed_edit && (
-                  <span className="px-2.5 py-1 rounded-md bg-purple-950 border border-purple-800 text-purple-300">
-                    Edit Tag: {selectedRecord.performed_edit}
+                  <span className="px-2.5 py-1 rounded-lg bg-purple-950 border border-purple-800 text-purple-300 font-mono">
+                    Edit: {selectedRecord.performed_edit}
                   </span>
                 )}
               </div>
 
               {/* Verbatim Problem */}
               <div className="space-y-1.5 p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  Verbatim Reported Defect (Original Text)
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Verbatim Reported Defect (Original Raw Text)
                 </div>
-                <div className="text-sm text-slate-100 font-sans font-medium leading-relaxed">
+                <div className="text-sm text-slate-100 font-medium leading-relaxed">
                   {selectedRecord.problem}
                 </div>
               </div>
 
               {/* Verbatim Action */}
               <div className="space-y-1.5 p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
-                  Verbatim Maintenance Action Taken (Original Text)
+                <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  Verbatim Maintenance Action Taken (Original Raw Text)
                 </div>
-                <div className="text-sm text-slate-100 font-sans font-medium leading-relaxed">
+                <div className="text-sm text-slate-100 font-medium leading-relaxed">
                   {selectedRecord.action}
                 </div>
               </div>
@@ -350,24 +418,37 @@ export const RecordsExplorer: React.FC<RecordsExplorerProps> = ({
               {/* Cleaned Representation */}
               {selectedRecord.combined_clean && (
                 <div className="space-y-1.5 p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Normalized Search & Embedding Representation
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                    Normalized Search & Vector Embedding Representation
                   </div>
-                  <div className="text-xs text-slate-300 font-sans leading-relaxed">
+                  <div className="text-xs text-slate-300 leading-relaxed font-mono">
                     {selectedRecord.combined_clean}
                   </div>
                 </div>
               )}
 
-              {/* Source Provenance */}
-              <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-3">
-                <span>Source File: {selectedRecord.source_filename}</span>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800 pt-4 gap-3">
+                {onAskCopilot && (
+                  <button
+                    onClick={() => {
+                      const q = `What corrective actions were taken for fault in record ${selectedRecord.ident}: "${selectedRecord.problem}"?`;
+                      setSelectedRecord(null);
+                      onAskCopilot(q);
+                    }}
+                    className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                  >
+                    <BotMessageSquare className="w-3.5 h-3.5" />
+                    <span>Ask AI Copilot About This Record</span>
+                  </button>
+                )}
+
                 <button
                   onClick={handleCopyJson}
-                  className="flex items-center space-x-1 text-sky-400 hover:text-sky-300 font-mono transition-colors"
+                  className="flex items-center space-x-1.5 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Tag className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied JSON' : 'Copy Record JSON'}</span>
+                  <span>{copied ? 'Copied to Clipboard' : 'Copy Record JSON'}</span>
                 </button>
               </div>
             </div>

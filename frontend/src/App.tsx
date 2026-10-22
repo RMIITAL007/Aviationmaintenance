@@ -35,21 +35,39 @@ export const App: React.FC = () => {
     setActiveTab('records');
   };
 
+  const handleNavigateToRecords = (componentFilter?: string) => {
+    setActiveTab('records');
+  };
+
+  const handleAskCopilot = (query: string) => {
+    setActiveTab('copilot');
+  };
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden">
-      {/* Top Navigation */}
-      <Navbar totalRecords={totalRecords} isBackendHealthy={isBackendHealthy} />
+    <div className="flex flex-col h-screen w-screen bg-[#070b14] text-slate-100 overflow-hidden hud-grid">
+      {/* Top Cockpit HUD Navbar */}
+      <Navbar
+        totalRecords={totalRecords}
+        isBackendHealthy={isBackendHealthy}
+        onOpenQuickSearch={() => setActiveTab('records')}
+      />
 
       {/* Main Body */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="flex flex-1 overflow-hidden relative">
+        <div className="scanline"></div>
 
-        {/* Content View */}
-        <main className="flex-1 overflow-y-auto bg-slate-950">
+        {/* Sidebar */}
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          recordCount={totalRecords}
+        />
+
+        {/* Content View Container */}
+        <main className="flex-1 overflow-y-auto bg-[#070b14]/90 relative z-10">
           {activeTab === 'dashboard' && (
             <Dashboard
-              onNavigateToRecords={() => setActiveTab('records')}
+              onNavigateToRecords={handleNavigateToRecords}
               onSelectRecord={handleSelectRecord}
             />
           )}
@@ -62,6 +80,7 @@ export const App: React.FC = () => {
             <RecordsExplorer
               initialIdent={focusedIdent}
               onClearInitialIdent={() => setFocusedIdent(null)}
+              onAskCopilot={handleAskCopilot}
             />
           )}
 
